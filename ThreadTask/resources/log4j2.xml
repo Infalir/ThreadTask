@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+    <Properties>
+        <property name="pattern_layout_console">%d{dd MMM yyyy HH:mm:ss} %p %c{1} - %m%n</property>
+        <property name="pattern_layout_file">%d %p [%t] %c - %m%n</property>
+        <property name="pattern_file">logs/$${date:yyyy-MM}/app-%d{MM-dd-yyyy}-%i.log.gz</property>
+    </Properties>
+    <Appenders>
+        <Console name="ConsoleAppender"
+                 target="SYSTEM_OUT">
+            <PatternLayout pattern="${pattern_layout_console}"/>
+        </Console>
+
+        <RollingFile name="FileAppender"
+                     fileName="logs/recent.log"
+                     filePattern="${pattern_file}">
+            <PatternLayout pattern="${pattern_layout_file}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1"/>
+                <SizeBasedTriggeringPolicy size="20 KB"/>
+            </Policies>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <Root level="DEBUG">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="FileAppender"/>
+        </Root>
+    </Loggers>
+</Configuration>

@@ -12,11 +12,12 @@ public class ShipArrivingState implements ShipState {
   @Override
   public void doAction(Ship ship) throws MultiThreadException {
     Port port = Port.getInstance();
-    Pier pier = port.getPier();
+    Pier pier = port.getPier(ship);
     ship.setPier(Optional.of(pier));
     switch (ship.getShipTarget()){
       case LOADING -> ship.setShipState(new ShipLoadingState());
       case UNLOADING, LOADING_UNLOADING -> ship.setShipState(new ShipUnloadingState());
+      default -> throw new MultiThreadException("Invalid ship target");
     }
   }
 }

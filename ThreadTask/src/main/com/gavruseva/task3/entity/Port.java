@@ -16,8 +16,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Port {
   private static final Logger logger = LogManager.getLogger();
-  private static final int AMOUNT_OF_PIERS = 8;
-  private static final int CAPACITY = 16;
+  private static final int AMOUNT_OF_PIERS = 4;
+  private static final int CAPACITY = 50;
   private static Port instance;
   private static Lock lock = new ReentrantLock();
   private AtomicInteger occupiedPlaces;
@@ -52,54 +52,64 @@ public class Port {
   }
 
   public static Port getInstance() {
-    try {
-      lock.lock();
-      if (instance == null) {
-        instance = new Port();
+    if (instance == null) {
+      try {
+        lock.lock();
+        if (instance == null) {
+          instance = new Port();
+        }
+
+      } finally {
+        lock.unlock();
       }
-    } finally {
-      lock.unlock();
     }
     return instance;
   }
 
-  public Pier getPier() throws MultiThreadException {
+  public Pier getPier(Ship ship) {
     try {
       pierLock.lock();
       while (freePiers.isEmpty()) {
         try {
           pierCondition.await();
         } catch (InterruptedException e) {
-          logger.error("Thread was interrupted");
-          throw new MultiThreadException("Thread was interrupted", e);
+          logger.error("Thread was interrupted while waiting for free piers", e);
+          Thread.currentThread().interrupt();
         }
       }
-      Optional<Pier> pierOptional = freePiers.stream().findAny();
-      Pier pier = pierOptional.get();
+      Pier pier = freePiers.getFirst();
       freePiers.remove(pier);
       busyPiers.add(pier);
+      logger.info("Ship {} has arrived. Ship task {}, ship current load {}, ship capacity {}. Pier {} is now occupied",
+              ship.getShipId(), ship.getShipTarget(), ship.getOccupiedPlaces(),
+              ship.getCapacity(), pier.getPierId());
       return pier;
     } finally {
       pierLock.unlock();
     }
   }
 
-  public void releasePier(Pier pier) {
+  public void releasePier(Pier pier, Ship ship) {
     try {
       pierLock.lock();
       freePiers.add(pier);
       busyPiers.remove(pier);
+      logger.info("Ship {} has left. Ship task {}, ship current load {}, ship capacity {} Pier {} is now free",
+              ship.getShipId(), ship.getShipTarget(), ship.getOccupiedPlaces(),
+              ship.getCapacity(), pier.getPierId());
     } finally {
       pierCondition.signal();
       pierLock.unlock();
     }
   }
 
-  public void loadShip(Ship ship) throws MultiThreadException {
+  public void loadShip(Ship ship) {
     try {
       shipLock.lock();
       while(!ship.isFull()) {
         if (occupiedPlaces.get() > 0) {
+          logger.info("Ship {} has been loaded. Cargo on the ship {}. Cargo left in the port {}",
+                  ship.getShipId(), ship.getOccupiedPlaces(), occupiedPlaces.get());
           ship.addContainer();
           occupiedPlaces.decrementAndGet();
         }
@@ -114,16 +124,18 @@ public class Port {
     try {
       TimeUnit.SECONDS.sleep(1);
     } catch (InterruptedException e) {
-      logger.error("Thread was interrupted");
-      throw new MultiThreadException("Thread was interrupted", e);
+      logger.error("Thread was interrupted while loading ship {}", ship.getShipId(), e);
+      Thread.currentThread().interrupt();
     }
   }
 
-  public void unloadShip(Ship ship) throws MultiThreadException {
+  public void unloadShip(Ship ship) {
     try{
       shipLock.lock();
       while(!ship.isEmpty()){
         if(occupiedPlaces.get() < CAPACITY){
+          logger.info("Ship {} has been unloaded. Cargo on the ship {}. Cargo left in the port {}",
+                  ship.getShipId(), ship.getOccupiedPlaces(), occupiedPlaces.get());
           ship.removeContainer();
           occupiedPlaces.incrementAndGet();
         }
@@ -138,8 +150,8 @@ public class Port {
     try {
       TimeUnit.SECONDS.sleep(1);
     } catch (InterruptedException e) {
-      logger.error("Thread was interrupted");
-      throw new MultiThreadException("Thread was interrupted", e);
+      logger.error("Thread was interrupted while unloading ship {}", ship.getShipId(), e);
+      Thread.currentThread().interrupt();
     }
   }
 

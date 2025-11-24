@@ -14,7 +14,7 @@ public class ShipDepartingState implements ShipState {
     Port port = Port.getInstance();
     Optional<Pier> pier = ship.getPier();
     if (pier.isPresent()) {
-      port.releasePier(pier.get());
+      port.releasePier(pier.get(), ship);
       ship.setPier(Optional.empty());
     }
     ship.setShipState(new ShipArrivingState());

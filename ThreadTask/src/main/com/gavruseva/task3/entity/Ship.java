@@ -83,14 +83,25 @@ public class Ship implements Runnable {
 
   @Override
   public void run() {
-    do {
+    boolean departed = false;
+    while (!departed) {
       try {
         shipState.doAction(this);
+        if (shipState instanceof ShipDepartingState) {
+          try {
+            shipState.doAction(this);
+          } catch (MultiThreadException e) {
+            logger.error("Cannot proceed to completing an action on ship {}", shipId, e);
+          }
+          departed = true;
+        }
       } catch (MultiThreadException e) {
         logger.error("Cannot do action", e);
+        break;
       }
-    } while (shipState.getClass() != ShipDepartingState.class);
+    }
   }
+
 
   @Override
   public int hashCode() {
